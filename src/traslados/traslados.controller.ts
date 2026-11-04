@@ -9,14 +9,41 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { TrasladosService } from './traslados.service.js';
-import { CreateTrasladoDto } from './dto/create-traslado.dto.js';
-import { UpdateTrasladoDto } from './dto/update-traslado.dto.js';
-import { JwtAuthGuard } from '../auth/jwt/jwt.guard.js';
-import { JwtRolesGuard } from '../auth/jwt/jwt-roles.guard.js';
-import { HasRoles } from '../auth/jwt/has-roles.js';
-import { JwtRole } from '../auth/jwt/jwt-role.js';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
+
+import {
+  TrasladosService,
+} from './traslados.service.js';
+
+import {
+  CreateTrasladoDto,
+} from './dto/create-traslado.dto.js';
+
+import {
+  UpdateTrasladoDto,
+} from './dto/update-traslado.dto.js';
+
+import {
+  JwtAuthGuard,
+} from '../auth/jwt/jwt.guard.js';
+
+import {
+  JwtRolesGuard,
+} from '../auth/jwt/jwt-roles.guard.js';
+
+import {
+  HasRoles,
+} from '../auth/jwt/has-roles.js';
+
+import {
+  JwtRole,
+} from '../auth/jwt/jwt-role.js';
 
 
 @ApiTags('traslado')
@@ -29,21 +56,113 @@ export class TrasladosController {
       TrasladosService,
   ) {}
 
+
+  // =====================================================
+  // LISTADO GENERAL DE TRASLADOS
+  // =====================================================
+
   @HasRoles(
     JwtRole.ADMINISTRADOR,
     JwtRole.ALMACEN,
-    JwtRole.MOVILIDAD,
   )
   @UseGuards(
     JwtAuthGuard,
     JwtRolesGuard,
   )
+  @ApiOperation({
+    summary:
+      'Listar todos los traslados',
+  })
   @Get()
   findAll() {
 
-    return this.trasladoService.findAll();
-
+    return this.trasladoService
+      .findAll();
   }
+
+
+  // =====================================================
+  // TRASLADOS DISPONIBLES PARA ALMACÉN
+  // =====================================================
+
+  @HasRoles(
+    JwtRole.ALMACEN,
+  )
+  @UseGuards(
+    JwtAuthGuard,
+    JwtRolesGuard,
+  )
+  @ApiOperation({
+    summary:
+      'Listar traslados disponibles para asignar encomiendas desde almacén',
+  })
+  @ApiParam({
+    name:
+      'destinoId',
+    type:
+      Number,
+    example:
+      2,
+    description:
+      'ID de la sede destino',
+  })
+  @Get(
+    'disponibles/destino/:destinoId',
+  )
+  findDisponiblesParaAlmacen(
+
+    @Param(
+      'destinoId',
+      ParseIntPipe,
+    )
+    destinoId: number,
+
+    @Req()
+    request: any,
+
+  ) {
+
+    return this.trasladoService
+      .findDisponiblesParaAlmacen(
+        request.user.sedeId,
+        destinoId,
+      );
+  }
+
+
+  // =====================================================
+  // MOVILIDAD - MIS TRASLADOS
+  // =====================================================
+
+  @HasRoles(
+    JwtRole.MOVILIDAD,
+  )
+  @UseGuards(
+    JwtAuthGuard,
+    JwtRolesGuard,
+  )
+  @ApiOperation({
+    summary:
+      'Listar los traslados asignados al conductor autenticado',
+  })
+  @Get(
+    'movilidad/mis-traslados',
+  )
+  findMisTraslados(
+    @Req()
+    request: any,
+  ) {
+
+    return this.trasladoService
+      .findMisTraslados(
+        request.user.userId,
+      );
+  }
+
+
+  // =====================================================
+  // OBTENER TRASLADO POR ID
+  // =====================================================
 
   @HasRoles(
     JwtRole.ADMINISTRADOR,
@@ -54,20 +173,41 @@ export class TrasladosController {
     JwtAuthGuard,
     JwtRolesGuard,
   )
+  @ApiOperation({
+    summary:
+      'Obtener detalle de un traslado',
+  })
+  @ApiParam({
+    name:
+      'id',
+    type:
+      Number,
+    example:
+      1,
+    description:
+      'ID del traslado',
+  })
   @Get(':id')
   findOne(
+
     @Param(
       'id',
       ParseIntPipe,
     )
     id: number,
+
   ) {
 
-    return this.trasladoService.findOne(
-      id,
-    );
-
+    return this.trasladoService
+      .findOne(
+        id,
+      );
   }
+
+
+  // =====================================================
+  // CREAR TRASLADO
+  // =====================================================
 
   @HasRoles(
     JwtRole.ADMINISTRADOR,
@@ -76,17 +216,29 @@ export class TrasladosController {
     JwtAuthGuard,
     JwtRolesGuard,
   )
+  @ApiOperation({
+    summary:
+      'Crear un nuevo traslado',
+  })
   @Post()
   create(
+
     @Body()
-    traslado: CreateTrasladoDto,
+    traslado:
+      CreateTrasladoDto,
+
   ) {
 
-    return this.trasladoService.create(
-      traslado,
-    );
-
+    return this.trasladoService
+      .create(
+        traslado,
+      );
   }
+
+
+  // =====================================================
+  // ACTUALIZAR TRASLADO
+  // =====================================================
 
   @HasRoles(
     JwtRole.ADMINISTRADOR,
@@ -95,8 +247,23 @@ export class TrasladosController {
     JwtAuthGuard,
     JwtRolesGuard,
   )
+  @ApiOperation({
+    summary:
+      'Actualizar un traslado programado',
+  })
+  @ApiParam({
+    name:
+      'id',
+    type:
+      Number,
+    example:
+      1,
+    description:
+      'ID del traslado',
+  })
   @Put(':id')
   update(
+
     @Param(
       'id',
       ParseIntPipe,
@@ -104,15 +271,22 @@ export class TrasladosController {
     id: number,
 
     @Body()
-    traslado: UpdateTrasladoDto,
+    traslado:
+      UpdateTrasladoDto,
+
   ) {
 
-    return this.trasladoService.update(
-      id,
-      traslado,
-    );
-
+    return this.trasladoService
+      .update(
+        id,
+        traslado,
+      );
   }
+
+
+  // =====================================================
+  // MOVILIDAD - INICIAR TRASLADO
+  // =====================================================
 
   @HasRoles(
     JwtRole.MOVILIDAD,
@@ -121,8 +295,25 @@ export class TrasladosController {
     JwtAuthGuard,
     JwtRolesGuard,
   )
-  @Put(':id/iniciar')
+  @ApiOperation({
+    summary:
+      'Iniciar un traslado asignado al conductor autenticado',
+  })
+  @ApiParam({
+    name:
+      'id',
+    type:
+      Number,
+    example:
+      1,
+    description:
+      'ID del traslado',
+  })
+  @Put(
+    ':id/iniciar',
+  )
   iniciar(
+
     @Param(
       'id',
       ParseIntPipe,
@@ -131,14 +322,20 @@ export class TrasladosController {
 
     @Req()
     request: any,
+
   ) {
 
-    return this.trasladoService.iniciar(
-      id,
-      request.user.userId,
-    );
-
+    return this.trasladoService
+      .iniciar(
+        id,
+        request.user.userId,
+      );
   }
+
+
+  // =====================================================
+  // MOVILIDAD - FINALIZAR TRASLADO
+  // =====================================================
 
   @HasRoles(
     JwtRole.MOVILIDAD,
@@ -147,8 +344,25 @@ export class TrasladosController {
     JwtAuthGuard,
     JwtRolesGuard,
   )
-  @Put(':id/finalizar')
+  @ApiOperation({
+    summary:
+      'Finalizar un traslado del conductor autenticado',
+  })
+  @ApiParam({
+    name:
+      'id',
+    type:
+      Number,
+    example:
+      1,
+    description:
+      'ID del traslado',
+  })
+  @Put(
+    ':id/finalizar',
+  )
   finalizar(
+
     @Param(
       'id',
       ParseIntPipe,
@@ -157,14 +371,20 @@ export class TrasladosController {
 
     @Req()
     request: any,
+
   ) {
 
-    return this.trasladoService.finalizar(
-      id,
-      request.user.userId,
-    );
-
+    return this.trasladoService
+      .finalizar(
+        id,
+        request.user.userId,
+      );
   }
+
+
+  // =====================================================
+  // ADMINISTRADOR - CANCELAR TRASLADO
+  // =====================================================
 
   @HasRoles(
     JwtRole.ADMINISTRADOR,
@@ -173,19 +393,63 @@ export class TrasladosController {
     JwtAuthGuard,
     JwtRolesGuard,
   )
-  @Put(':id/cancelar')
+  @ApiOperation({
+    summary:
+      'Cancelar un traslado programado',
+  })
+  @ApiParam({
+    name:
+      'id',
+    type:
+      Number,
+    example:
+      1,
+    description:
+      'ID del traslado',
+  })
+  @Put(
+    ':id/cancelar',
+  )
   cancelar(
+
     @Param(
       'id',
       ParseIntPipe,
     )
     id: number,
+
   ) {
 
-    return this.trasladoService.cancelar(
-      id,
-    );
-
+    return this.trasladoService
+      .cancelar(
+        id,
+      );
   }
+  @HasRoles(
+  JwtRole.MOVILIDAD,
+)
+@UseGuards(
+  JwtAuthGuard,
+  JwtRolesGuard,
+)
+@Put(
+  ':id/retornar-sede-central',
+)
+retornarSedeCentral(
+  @Param(
+    'id',
+    ParseIntPipe,
+  )
+  id: number,
+
+  @Req()
+  request: any,
+) {
+
+  return this.trasladoService.retornarASedeCentral(
+      id,
+      request.user.userId,
+    );
+}
 
 }

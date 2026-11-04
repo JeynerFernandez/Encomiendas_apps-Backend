@@ -40,6 +40,7 @@ import {
   CreateTrasladoEncomiendaDto,
 } from './dto/create-traslado-encomienda.dto.js';
 
+
 @Injectable()
 export class TrasladoEncomiendaService {
 
@@ -75,11 +76,13 @@ export class TrasladoEncomiendaService {
     detalle:
       CreateTrasladoEncomiendaDto,
 
-    sedeIdUsuario: number | null,
+    sedeIdUsuario:
+      number | null,
   ) {
 
     if (
-      sedeIdUsuario === null
+      sedeIdUsuario === null ||
+      sedeIdUsuario === undefined
     ) {
 
       throw new ForbiddenException(
@@ -87,6 +90,7 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
 
     const traslado =
       await this.trasladoRepository.findOne({
@@ -105,9 +109,13 @@ export class TrasladoEncomiendaService {
 
           },
 
+          vehiculo:
+            true,
+
         },
 
       });
+
 
     if (!traslado) {
 
@@ -116,6 +124,7 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
 
     if (
       traslado.estado !==
@@ -127,6 +136,19 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
+
+    if (
+      !traslado.vehiculo ||
+      !traslado.vehiculo.active
+    ) {
+
+      throw new BadRequestException(
+        'El vehículo del traslado no está disponible',
+      );
+
+    }
+
 
     const encomienda =
       await this.encomiendaRepository.findOne({
@@ -150,6 +172,7 @@ export class TrasladoEncomiendaService {
 
       });
 
+
     if (!encomienda) {
 
       throw new NotFoundException(
@@ -157,6 +180,7 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
 
     if (
       encomienda.estado !==
@@ -169,6 +193,7 @@ export class TrasladoEncomiendaService {
 
     }
 
+
     if (
       !encomienda.ultima_sede
     ) {
@@ -178,6 +203,7 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
 
     if (
       encomienda.ultima_sede.id !==
@@ -197,6 +223,7 @@ export class TrasladoEncomiendaService {
           sedeIdUsuario,
       );
 
+
     if (!sedeUsuarioEnRuta) {
 
       throw new BadRequestException(
@@ -212,6 +239,7 @@ export class TrasladoEncomiendaService {
           encomienda.sede_destino.id,
       );
 
+
     if (!destinoEnRuta) {
 
       throw new BadRequestException(
@@ -219,6 +247,7 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
 
     if (
       destinoEnRuta.orden <=
@@ -248,6 +277,7 @@ export class TrasladoEncomiendaService {
 
       });
 
+
     if (detalleExist) {
 
       throw new ConflictException(
@@ -255,6 +285,11 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
+
+    // ===================================================
+    // VERIFICAR ASIGNACION ACTIVA EN OTRO TRASLADO
+    // ===================================================
 
     const asignacionActiva =
       await this.detalleRepository.findOne({
@@ -276,10 +311,112 @@ export class TrasladoEncomiendaService {
 
       });
 
+
     if (asignacionActiva) {
 
       throw new ConflictException(
         'La encomienda ya está asignada a otro traslado',
+      );
+
+    }
+
+
+    // ===================================================
+    // VALIDAR CAPACIDAD DEL VEHICULO
+    // ===================================================
+
+    const capacidadVehiculoKg =
+      Number(
+        traslado.vehiculo
+          .capacidad_kg,
+      );
+
+
+    if (
+      capacidadVehiculoKg <= 0
+    ) {
+
+      throw new BadRequestException(
+        'El vehículo no tiene una capacidad válida configurada',
+      );
+
+    }
+
+
+    const encomiendasAsignadas =
+      await this.detalleRepository.find({
+
+        where: {
+
+          traslado: {
+            id: traslado.id,
+          },
+
+          descargado_at:
+            IsNull(),
+
+        },
+
+        relations: {
+          encomienda: true,
+        },
+
+      });
+
+
+    const cargaActualKg =
+      encomiendasAsignadas.reduce(
+
+        (
+          total,
+          asignacion,
+        ) => {
+
+          return (
+            total +
+            Number(
+              asignacion
+                .encomienda
+                .peso_kg,
+            )
+          );
+
+        },
+
+        0,
+
+      );
+
+
+    const pesoEncomiendaKg =
+      Number(
+        encomienda.peso_kg,
+      );
+
+
+    if (
+      pesoEncomiendaKg <= 0
+    ) {
+
+      throw new BadRequestException(
+        'La encomienda no tiene un peso válido',
+      );
+
+    }
+
+
+    const capacidadDisponibleKg =
+      capacidadVehiculoKg -
+      cargaActualKg;
+
+
+    if (
+      pesoEncomiendaKg >
+      capacidadDisponibleKg
+    ) {
+
+      throw new BadRequestException(
+        `La encomienda pesa ${pesoEncomiendaKg} kg y el vehículo solo tiene ${capacidadDisponibleKg} kg disponibles`,
       );
 
     }
@@ -298,9 +435,11 @@ export class TrasladoEncomiendaService {
 
       });
 
+
     return this.detalleRepository.save(
       newDetalle,
     );
+
   }
 
   async findAll() {
@@ -348,6 +487,7 @@ export class TrasladoEncomiendaService {
       },
 
     });
+
   }
 
   async findOne(
@@ -399,6 +539,7 @@ export class TrasladoEncomiendaService {
 
       });
 
+
     if (!detalle) {
 
       throw new NotFoundException(
@@ -407,9 +548,10 @@ export class TrasladoEncomiendaService {
 
     }
 
-    return detalle;
-  }
 
+    return detalle;
+
+  }
   async findByTraslado(
     trasladoId: number,
   ) {
@@ -419,6 +561,7 @@ export class TrasladoEncomiendaService {
         id: trasladoId,
       });
 
+
     if (!traslado) {
 
       throw new NotFoundException(
@@ -426,6 +569,7 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
 
     return this.detalleRepository.find({
 
@@ -462,6 +606,7 @@ export class TrasladoEncomiendaService {
       },
 
     });
+
   }
 
   async findBySede(
@@ -497,6 +642,7 @@ export class TrasladoEncomiendaService {
 
       });
 
+
     if (!traslado) {
 
       throw new NotFoundException(
@@ -504,6 +650,7 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
 
     if (
       traslado.conductor.id !==
@@ -516,6 +663,7 @@ export class TrasladoEncomiendaService {
 
     }
 
+
     if (
       traslado.estado !==
       TrasladoEstado.EN_CURSO
@@ -527,11 +675,18 @@ export class TrasladoEncomiendaService {
 
     }
 
+
     const sede =
       await this.sedeRepository.findOneBy({
-        id: sedeId,
-        active: true,
+
+        id:
+          sedeId,
+
+        active:
+          true,
+
       });
+
 
     if (!sede) {
 
@@ -541,12 +696,14 @@ export class TrasladoEncomiendaService {
 
     }
 
+
     const sedeEnRuta =
       traslado.ruta.sedes.find(
         (item) =>
           item.sede.id ===
           sede.id,
       );
+
 
     if (!sedeEnRuta) {
 
@@ -555,6 +712,7 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
 
     const encomiendas =
       await this.detalleRepository.find({
@@ -601,6 +759,7 @@ export class TrasladoEncomiendaService {
 
       });
 
+
     return {
 
       traslado: {
@@ -640,18 +799,23 @@ export class TrasladoEncomiendaService {
               detalle.encomienda.id,
 
             codigo_rastreo:
-              detalle.encomienda
+              detalle
+                .encomienda
                 .codigo_rastreo,
 
             destinatario: {
 
               dni:
-                detalle.encomienda
-                  .destinatario.dni,
+                detalle
+                  .encomienda
+                  .destinatario
+                  .dni,
 
               nombres:
-                detalle.encomienda
-                  .destinatario.nombres,
+                detalle
+                  .encomienda
+                  .destinatario
+                  .nombres,
 
               apellidos:
                 `${detalle.encomienda.destinatario.apellido_paterno} ${detalle.encomienda.destinatario.apellido_materno}`,
@@ -659,13 +823,16 @@ export class TrasladoEncomiendaService {
             },
 
             destino:
-              detalle.encomienda
-                .sede_destino.name,
+              detalle
+                .encomienda
+                .sede_destino
+                .name,
 
           }),
         ),
 
     };
+
   }
 
   async descargarPorSede(
@@ -698,6 +865,7 @@ export class TrasladoEncomiendaService {
 
       });
 
+
     if (!traslado) {
 
       throw new NotFoundException(
@@ -705,6 +873,7 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
 
     if (
       traslado.conductor.id !==
@@ -717,6 +886,7 @@ export class TrasladoEncomiendaService {
 
     }
 
+
     if (
       traslado.estado !==
       TrasladoEstado.EN_CURSO
@@ -728,11 +898,18 @@ export class TrasladoEncomiendaService {
 
     }
 
+
     const sede =
       await this.sedeRepository.findOneBy({
-        id: sedeId,
-        active: true,
+
+        id:
+          sedeId,
+
+        active:
+          true,
+
       });
+
 
     if (!sede) {
 
@@ -742,12 +919,14 @@ export class TrasladoEncomiendaService {
 
     }
 
+
     const sedeEnRuta =
       traslado.ruta.sedes.find(
         (item) =>
           item.sede.id ===
           sede.id,
       );
+
 
     if (!sedeEnRuta) {
 
@@ -756,6 +935,7 @@ export class TrasladoEncomiendaService {
       );
 
     }
+
 
     const detalles =
       await this.detalleRepository.find({
@@ -795,6 +975,7 @@ export class TrasladoEncomiendaService {
 
       });
 
+
     if (
       detalles.length === 0
     ) {
@@ -805,8 +986,10 @@ export class TrasladoEncomiendaService {
 
     }
 
+
     const fecha =
       new Date();
+
 
     for (
       const detalle of detalles
@@ -826,6 +1009,7 @@ export class TrasladoEncomiendaService {
 
     }
 
+
     await this.encomiendaRepository.save(
       detalles.map(
         (detalle) =>
@@ -833,9 +1017,11 @@ export class TrasladoEncomiendaService {
       ),
     );
 
+
     await this.detalleRepository.save(
       detalles,
     );
+
 
     return {
 
@@ -866,11 +1052,13 @@ export class TrasladoEncomiendaService {
               detalle.encomienda.id,
 
             codigo_rastreo:
-              detalle.encomienda
+              detalle
+                .encomienda
                 .codigo_rastreo,
 
             estado:
-              detalle.encomienda
+              detalle
+                .encomienda
                 .estado,
 
             descargado_at:
@@ -880,6 +1068,7 @@ export class TrasladoEncomiendaService {
         ),
 
     };
+
   }
 
 }

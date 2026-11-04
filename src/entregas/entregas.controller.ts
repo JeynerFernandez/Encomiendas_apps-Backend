@@ -10,6 +10,13 @@ import {
 } from '@nestjs/common';
 
 import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
+
+import {
   EntregasService,
 } from './entregas.service.js';
 
@@ -32,7 +39,7 @@ import {
 import {
   JwtRole,
 } from '../auth/jwt/jwt-role.js';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+
 
 @ApiTags('Entregas')
 @ApiBearerAuth('access-token')
@@ -44,14 +51,18 @@ export class EntregasController {
       EntregasService,
   ) {}
 
+
   @HasRoles(
     JwtRole.ADMINISTRADOR,
-    JwtRole.RECEPCION,
   )
   @UseGuards(
     JwtAuthGuard,
     JwtRolesGuard,
   )
+  @ApiOperation({
+    summary:
+      'Listar todas las entregas registradas',
+  })
   @Get()
   findAll() {
 
@@ -59,6 +70,34 @@ export class EntregasController {
       .findAll();
   }
 
+
+  @HasRoles(
+    JwtRole.RECEPCION,
+  )
+  @UseGuards(
+    JwtAuthGuard,
+    JwtRolesGuard,
+  )
+  @ApiOperation({
+    summary:
+      'Listar encomiendas pendientes de entrega en la sede del recepcionista',
+  })
+  @Get(
+    'pendientes',
+  )
+  findPendientes(
+    @Req()
+    request: any,
+  ) {
+
+    return this.entregasService
+      .findPendientes(
+        request.user.userId,
+        request.user.sedeId,
+      );
+  }
+
+
   @HasRoles(
     JwtRole.ADMINISTRADOR,
     JwtRole.RECEPCION,
@@ -67,6 +106,18 @@ export class EntregasController {
     JwtAuthGuard,
     JwtRolesGuard,
   )
+  @ApiOperation({
+    summary:
+      'Consultar entrega mediante ID de encomienda',
+  })
+  @ApiParam({
+    name:
+      'encomiendaId',
+    type:
+      Number,
+    example:
+      1,
+  })
   @Get(
     'encomienda/:encomiendaId',
   )
@@ -86,6 +137,7 @@ export class EntregasController {
       );
   }
 
+
   @HasRoles(
     JwtRole.ADMINISTRADOR,
     JwtRole.RECEPCION,
@@ -94,6 +146,18 @@ export class EntregasController {
     JwtAuthGuard,
     JwtRolesGuard,
   )
+  @ApiOperation({
+    summary:
+      'Consultar una entrega mediante su ID',
+  })
+  @ApiParam({
+    name:
+      'id',
+    type:
+      Number,
+    example:
+      1,
+  })
   @Get(':id')
   findOne(
 
@@ -111,6 +175,7 @@ export class EntregasController {
       );
   }
 
+
   @HasRoles(
     JwtRole.RECEPCION,
   )
@@ -118,6 +183,18 @@ export class EntregasController {
     JwtAuthGuard,
     JwtRolesGuard,
   )
+  @ApiOperation({
+    summary:
+      'Entregar una encomienda al destinatario validando sede, pago, DNI y clave',
+  })
+  @ApiParam({
+    name:
+      'encomiendaId',
+    type:
+      Number,
+    example:
+      1,
+  })
   @Post(
     'encomienda/:encomiendaId',
   )

@@ -23,6 +23,14 @@ export class Vehiculo {
   descripcion: string;
 
   @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  capacidad_kg: number;
+
+  @Column({
     default: true,
   })
   active: boolean;

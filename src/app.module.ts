@@ -19,6 +19,7 @@ import { EntregasModule } from './entregas/entregas.module.js';
 import { TiposIncidenciaModule } from './tipos-incidencia/tipos-incidencia.module.js';
 import { IncidenciasModule } from './incidencias/incidencias.module.js';
 import { UbicacionTrasladoModule } from './ubicacion-traslado/ubicacion-traslado.module.js';
+import { ReportesModule } from './reportes/reportes.module.js';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { UbicacionTrasladoModule } from './ubicacion-traslado/ubicacion-traslado
     TiposIncidenciaModule,
     IncidenciasModule,
     UbicacionTrasladoModule,
+    ReportesModule,
 
   ],
 })

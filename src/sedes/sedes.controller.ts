@@ -6,6 +6,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
@@ -56,12 +57,17 @@ export class SedesController {
     JwtAuthGuard,
   )
   @Get()
-  findAll() {
+findAll(
+  @Query('active')
+  active?: string,
+) {
 
-    return this.sedeService
-      .findAll();
+  return this.sedeService
+    .findAll(
+      active,
+    );
 
-  }
+}
 
   @UseGuards(
     JwtAuthGuard,

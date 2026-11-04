@@ -45,15 +45,47 @@ export class SedesService {
     );
   }
 
-  findAll() {
+  findAll(
+  active?: string,
+) {
+
+  if (
+    active === 'true'
+  ) {
 
     return this.sedeRepository.find({
+      where: {
+        active: true,
+      },
       order: {
         id: 'ASC',
       },
     });
 
   }
+
+  if (
+    active === 'false'
+  ) {
+
+    return this.sedeRepository.find({
+      where: {
+        active: false,
+      },
+      order: {
+        id: 'ASC',
+      },
+    });
+
+  }
+
+  return this.sedeRepository.find({
+    order: {
+      id: 'ASC',
+    },
+  });
+
+}
 
   async findOne(id: number) {
 

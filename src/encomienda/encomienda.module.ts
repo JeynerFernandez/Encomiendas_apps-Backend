@@ -45,6 +45,7 @@ import {
 import {
   EncomiendaController,
 } from './encomienda.controller.js';
+import { TrasladoEncomienda } from '../traslado-encomienda/traslado-encomienda.entity.js';
 
 @Module({
 
@@ -56,6 +57,8 @@ import {
       Sede,
       Ruta,
       User,
+      TrasladoEncomienda
+
     ]),
 
     TarifasModule,
